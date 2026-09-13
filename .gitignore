@@ -1,0 +1,11 @@
+.claude/
+
+# Personal planning and job-search notes — not part of the public project
+GOALS.md
+PLAN.md
+
+# Reference PDFs (copyrighted; kept locally only)
+documents/
+
+# Local backup tooling
+backup.sh
