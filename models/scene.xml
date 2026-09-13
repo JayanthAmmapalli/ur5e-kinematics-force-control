@@ -1,0 +1,64 @@
+<!--
+  Scene: UR5e with wrist F/T sensor, plus a rigid table for contact work.
+
+  The table top sits at z = 0.25. At the 'home' keyframe the probe tip is at
+  z = 0.388 with the tool pointing straight down, so it starts ~0.13 m clear of
+  the surface and descends onto it.
+
+  CONTACT PARAMETERS are declared explicitly rather than left to default,
+  because Tier 4 sweeps them and an unrecorded solref makes the measured
+  stability boundary unreproducible (see GOALS.md trap [T4]):
+
+    solref = "timeconst dampratio"  -> 0.02 s, 1.0   (MuJoCo default; soft)
+    solimp = "dmin dmax width ..."  -> 0.9 0.95 0.001
+
+  Smaller timeconst = stiffer contact. Tier 4 stiffens this and re-measures.
+-->
+<mujoco model="ur5e force control scene">
+  <include file="ur5e_arm.xml"/>
+
+  <statistic center="0 0.4 0.3" extent="1.2"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.1 0.1 0.1" specular="0 0 0"/>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global azimuth="140" elevation="-20"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0"
+      width="512" height="3072"/>
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge"
+      rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8"
+      width="300" height="300"/>
+    <material name="groundplane" texture="groundplane" texuniform="true"
+      texrepeat="5 5" reflectance="0.2"/>
+    <material name="tabletop" rgba="0.72 0.62 0.48 1" specular="0.2" shininess="0.1"/>
+  </asset>
+
+  <worldbody>
+    <light pos="0 0 2" dir="0 0 -1" directional="true"/>
+    <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
+
+    <!-- Rigid table. Static (no joint), so it is welded to the world. -->
+    <body name="table" pos="0 0.5 0.125">
+      <geom name="table_top" type="box" size="0.3 0.3 0.125"
+        material="tabletop" condim="3" friction="0.6 0.005 0.0001"
+        solref="0.02 1" solimp="0.9 0.95 0.001"/>
+    </body>
+  </worldbody>
+
+  <!--
+    Table-dependent keyframes. These live here rather than in ur5e_arm.xml
+    because their joint angles are only meaningful for a table top at z = 0.25.
+    Solved offline for: probe tip on the surface, tool axis exactly -z,
+    wrist_3 = 0 (the probe is axisymmetric, so that rotation is free and is
+    pinned for reproducibility).
+  -->
+  <keyframe>
+    <key name="approach" qpos="-1.570796 -1.520651 1.851840 -1.901985 -1.570796 0"
+      ctrl="0 0 0 0 0 0"/>
+    <key name="touch"    qpos="-1.570796 -1.512358 1.870132 -1.928570 -1.570796 0"
+      ctrl="0 0 0 0 0 0"/>
+  </keyframe>
+</mujoco>

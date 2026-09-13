@@ -9,3 +9,11 @@ documents/
 
 # Local backup tooling
 backup.sh
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Symlink to the mujoco_menagerie meshes (see scripts/setup_assets.py)
+models/assets
