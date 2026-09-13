@@ -1,0 +1,15 @@
+# Runtime
+#
+# mujoco bundles the simulator itself -- there is no separate MuJoCo install, no
+# ~/.mujoco directory and no licence key. Tutorials describing those predate
+# MuJoCo 2.1.2 and no longer apply.
+mujoco>=3.13.0
+numpy>=2.0,<3
+scipy>=1.15          # offline pose solves and numerical utilities
+matplotlib>=3.10     # manipulability, workspace, force-error and K-D plots
+
+# Tests
+#
+# The validation tests are the substance of this project: FK vs MuJoCo,
+# Jacobian vs finite-difference, measured wrench vs a known static load.
+pytest>=8.0

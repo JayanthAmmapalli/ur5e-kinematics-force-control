@@ -20,34 +20,108 @@ against. The validation tests are the substance of this repository, not the demo
   FK, and cross-checked against `mj_jac`
 - Measured contact wrench, checked against a known applied static load
 
-## Setup
+## Requirements
 
-Requires Python 3.10+ and a working OpenGL stack for the viewer.
+| | |
+|---|---|
+| Python | 3.10 or newer |
+| OS | Linux, macOS, or Windows. Developed and tested on Ubuntu 22.04 (x86-64) |
+| Graphics | An OpenGL 3.3+ context for the interactive viewer. Headless use needs no GPU — the physics runs entirely on CPU |
+
+Packages are listed in [`requirements.txt`](requirements.txt):
+
+| Package | Tested | Purpose |
+|---|---|---|
+| `mujoco` | 3.13.0 | simulator and Python bindings |
+| `numpy` | 2.2.6 | the kinematics implementation itself |
+| `scipy` | 1.15.3 | offline pose solves, numerical utilities |
+| `matplotlib` | 3.10.9 | manipulability, workspace, force-error and `K`–`D` plots |
+| `pytest` | 9.1.1 | the validation tests |
+
+`mujoco` bundles the simulator — there is **no** separate MuJoCo install, no
+`~/.mujoco` directory, and no licence key. Instructions describing those predate
+MuJoCo 2.1.2 and no longer apply.
+
+## Installation
 
 ```bash
 git clone https://github.com/JayanthAmmapalli/ur5e-kinematics-force-control.git
 cd ur5e-kinematics-force-control
 
-python3 -m venv .venv && source .venv/bin/activate
-pip install mujoco numpy scipy matplotlib
-
-# The UR5e meshes are not vendored -- clone the menagerie and link them.
-git clone --depth 1 https://github.com/google-deepmind/mujoco_menagerie.git \
-    ~/projects/mujoco_menagerie
-python scripts/setup_assets.py          # set MUJOCO_MENAGERIE if cloned elsewhere
+python3 -m venv .venv
+source .venv/bin/activate                 # Windows: .venv\Scripts\activate
+pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
-Then verify the model and the Tier 0 properties it was built for:
+On Debian/Ubuntu, `python3 -m venv` may report `ensurepip is not available`. Install
+the venv package for your interpreter and retry:
 
 ```bash
-python scripts/inspect_model.py         # state handles + all Tier 0 checks
+sudo apt install python3.10-venv          # match your Python version
+```
+
+### Meshes
+
+The UR5e meshes (~30 MB) are **not vendored** in this repository. Clone
+`mujoco_menagerie` and link them:
+
+```bash
+git clone --depth 1 https://github.com/google-deepmind/mujoco_menagerie.git \
+    ~/projects/mujoco_menagerie
+python scripts/setup_assets.py
+```
+
+`setup_assets.py` creates `models/assets` as a symlink, so the model files stay
+directly loadable. Clone the menagerie **outside** this repository so it does not
+end up nested in git. If you put it somewhere other than
+`~/projects/mujoco_menagerie`, point the script at it:
+
+```bash
+MUJOCO_MENAGERIE=/path/to/mujoco_menagerie python scripts/setup_assets.py
+```
+
+## Verifying the install
+
+```bash
+python scripts/inspect_model.py             # state handles + all Tier 0 checks
 python -m mujoco.viewer --mjcf=models/scene.xml
 ```
 
 `inspect_model.py` asserts rather than merely prints: that the actuators are
-torque motors and not position servos, that gravity compensation nulls the
-acceleration, that the wrist wrench matches the known tool mass, that the arm
-holds a commanded pose, and that probe/table contact registers.
+torque motors and not position servos, that the declared timestep, control rate
+and integrator are what the model actually uses, that gravity compensation nulls
+the acceleration, that the wrist wrench matches the known tool mass, that the arm
+holds a commanded pose, and that probe/table contact registers. It exits non-zero
+if any of that is untrue.
+
+Pass `--arm-only` to load the arm without the table or floor.
+
+## Troubleshooting
+
+**The viewer fails to open, or rendering is broken.** This is a graphics problem,
+not a MuJoCo one. `MUJOCO_GL` selects the backend: `glfw` (default, on-screen),
+`egl` (headless, GPU), `osmesa` (software). To rule out the hardware path:
+
+```bash
+MUJOCO_GL=osmesa python -m mujoco.viewer
+```
+
+On NVIDIA, check `nvidia-smi` first — `Failed to initialize NVML: Driver/library
+version mismatch` means the kernel module and userspace libraries disagree, which
+a reboot usually resolves. It presents as a MuJoCo failure but is not one.
+
+**`pip` reports conflicts with packages you never installed, or `pip list` shows
+far more than you installed.** If you use ROS, sourcing `setup.bash` puts ROS's
+`site-packages` on `PYTHONPATH`, and `PYTHONPATH` takes precedence over the
+virtualenv. Any package present in both resolves to ROS's copy, silently. Check:
+
+```bash
+python -c "import sys; print([p for p in sys.path if 'ros' in p])"   # want: []
+```
+
+Fix it for one shell with `unset PYTHONPATH`, or permanently by not sourcing ROS
+globally — comment it out of `~/.bashrc` and source it on demand instead.
 
 ## Layout
 
